@@ -12,6 +12,7 @@ const BulkWhoisPage = lazy(() => import('./BulkWhoisPage'));
 const ServerManagementPage = lazy(() => import('./ServerManagementPage'));
 const UserManagementPage = lazy(() => import('./UserManagementPage'));
 const MyActivityPage = lazy(() => import('./MyActivityPage'));
+const UserActivityPage = lazy(() => import('./UserActivityPage'));
 const SettingsPage = lazy(() => import('./SettingsPage'));
 const ProfilePage = lazy(() => import('./ProfilePage'));
 const DashboardPage = lazy(() => import('./DashboardPage'));
@@ -305,13 +306,15 @@ export default function WhoisPage() {
           ? 'users'
           : (location.pathname === '/settings' && user?.role === 'admin')
             ? 'settings'
-            : (location.pathname === '/activity' || location.pathname === '/my-activity')
+            : (location.pathname === '/activity' && user?.role === 'admin')
               ? 'activity'
-              : location.pathname === '/profile'
-                ? 'profile'
-                : location.pathname === '/lookup'
-                  ? 'lookup'
-                  : 'dashboard';
+              : location.pathname === '/my-activity'
+                ? 'my-activity'
+                : location.pathname === '/profile'
+                  ? 'profile'
+                  : location.pathname === '/lookup'
+                    ? 'lookup'
+                    : 'dashboard';
 
   const isMounted = useRef(true);
   useEffect(() => {
@@ -684,7 +687,7 @@ export default function WhoisPage() {
             <button
               onClick={() => { navigate('/my-activity'); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === 'activity'
+                activeTab === 'my-activity'
                   ? 'bg-black text-white shadow-sm'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
@@ -715,6 +718,17 @@ export default function WhoisPage() {
                 >
                   <Users className="w-4 h-4" />
                   Pengguna
+                </button>
+                <button
+                  onClick={() => { navigate('/activity'); setSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    activeTab === 'activity'
+                      ? 'bg-black text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Activity className="w-4 h-4" />
+                  Aktivitas Pengguna
                 </button>
                 <button
                   onClick={() => { navigate('/settings'); setSidebarOpen(false); }}
@@ -764,12 +778,14 @@ export default function WhoisPage() {
                       : activeTab === 'servers'
                         ? 'Server Monitor'
                         : activeTab === 'activity'
-                          ? 'Aktivitas Akun'
-                          : activeTab === 'profile'
-                            ? 'Profil Saya'
-                            : activeTab === 'settings'
-                              ? 'Pengaturan Brand'
-                              : 'WHOIS'}
+                          ? 'Aktivitas Pengguna'
+                          : activeTab === 'my-activity'
+                            ? 'Aktivitas Akun'
+                            : activeTab === 'profile'
+                              ? 'Profil Saya'
+                              : activeTab === 'settings'
+                                ? 'Pengaturan Brand'
+                                : 'WHOIS'}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -1318,8 +1334,13 @@ export default function WhoisPage() {
             <SettingsPage />
           )}
 
+          {/* Admin User Activity Page */}
+          {activeTab === 'activity' && user?.role === 'admin' && (
+            <UserActivityPage />
+          )}
+
           {/* My Activity & Profile Page */}
-          {activeTab === 'activity' && (
+          {activeTab === 'my-activity' && (
             <MyActivityPage />
           )}
 
