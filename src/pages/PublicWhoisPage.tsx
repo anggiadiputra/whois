@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Globe, Search, ShieldAlert, CheckCircle2, Clock, Terminal, LogIn } from 'lucide-react';
+import { Globe, Search, ShieldAlert, CheckCircle2, Clock, Terminal } from 'lucide-react';
 
 interface WhoisResult {
   domain: string;
@@ -21,7 +21,7 @@ interface WhoisResult {
 }
 
 export default function PublicWhoisPage() {
-  const { brandName, brandLogo } = useAuth();
+  const { brandName } = useAuth();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<WhoisResult | null>(null);
@@ -80,48 +80,7 @@ export default function PublicWhoisPage() {
   const expiryBadge = result ? getExpiryLabel(result.expiryDate) : null;
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] flex flex-col items-center">
-      {/* Top Navbar */}
-      <header className="w-full bg-white border-b border-gray-200 h-16 sticky top-0 z-10 shrink-0 flex items-center">
-        <div className="max-w-7xl mx-auto px-6 w-full flex items-center justify-between">
-          {/* Brand Info & Menu */}
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2.5">
-              {brandLogo ? (
-                <img src={brandLogo} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
-              ) : (
-                <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-                  <Globe className="w-4.5 h-4.5 text-white" />
-                </div>
-              )}
-              <span className="font-bold text-gray-900 text-lg tracking-tight">{brandName}</span>
-            </div>
-            {/* Nav Menu */}
-            <nav className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm font-semibold text-gray-400 select-none">
-              <a href="/" className="text-gray-500 hover:text-black transition-colors">Beranda</a>
-              <a href="/whois" className="text-gray-900 font-bold transition-colors border-b-2 border-black pb-0.5">Whois</a>
-            </nav>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-            <a
-              href="/"
-              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-black rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-            >
-              <LogIn className="w-4 h-4 text-gray-400" />
-              Login
-            </a>
-            <a
-              href="/"
-              className="px-4 sm:px-4.5 py-2 bg-black hover:bg-gray-900 hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
-            >
-              Get Started
-            </a>
-          </div>
-        </div>
-      </header>
-
+    <div className="w-full flex flex-col items-center">
       {/* Main Search Area */}
       <main className="w-full max-w-2xl px-4 py-8 md:py-12 space-y-6 flex-1">
         <div className="text-center max-w-lg mx-auto space-y-2">
