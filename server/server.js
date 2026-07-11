@@ -844,6 +844,19 @@ app.get('/api/whois-lookup', requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/public-whois-lookup', async (req, res) => {
+  const { domain } = req.query;
+  if (!domain || typeof domain !== 'string' || !domain.trim())
+    return res.status(400).json({ error: 'Domain parameter is required' });
+  try {
+    const data = await scrapeWhois(domain.trim().toLowerCase());
+    await logActivity('public', 'Public WHOIS Lookup', `Searched WHOIS for domain: ${domain.trim().toLowerCase()}`);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to fetch WHOIS data' });
+  }
+});
+
 app.get('/api/saved-domains', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
