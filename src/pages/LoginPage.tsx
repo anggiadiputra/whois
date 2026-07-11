@@ -583,7 +583,7 @@ export default function LoginPage() {
                       </svg>
                       {mode === 'login' ? 'Memeriksa...' : mode === 'register' ? 'Mendaftar...' : 'Mengirim...'}
                     </span>
-                  ) : mode === 'login' ? 'Masuk → Send OTP' : mode === 'register' ? 'Daftar → Send OTP' : 'Send OTP'}
+                  ) : mode === 'login' ? 'Masuk → Kirim OTP' : mode === 'register' ? 'Daftar → Kirim OTP' : 'Kirim OTP'}
                 </button>
               </form>
 
