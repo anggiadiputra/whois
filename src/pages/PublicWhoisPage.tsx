@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Globe, Search, ShieldAlert, CheckCircle2, Clock, Terminal } from 'lucide-react';
+import { Globe, Search, ShieldAlert, CheckCircle2, Clock, Terminal, LogIn } from 'lucide-react';
 
 interface WhoisResult {
   domain: string;
@@ -82,24 +82,45 @@ export default function PublicWhoisPage() {
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex flex-col items-center">
       {/* Top Navbar */}
-      <header className="w-full bg-white border-b border-gray-200 h-16 px-6 flex items-center justify-between sticky top-0 z-10 shrink-0">
-        <div className="flex items-center gap-2.5">
-          {brandLogo ? (
-            <img src={brandLogo} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
-          ) : (
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <Globe className="w-4.5 h-4.5 text-white" />
+      <header className="w-full bg-white border-b border-gray-200 h-16 sticky top-0 z-10 shrink-0 flex items-center">
+        <div className="max-w-7xl mx-auto px-6 w-full flex items-center justify-between">
+          {/* Brand Info & Menu */}
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2.5">
+              {brandLogo ? (
+                <img src={brandLogo} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
+              ) : (
+                <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+                  <Globe className="w-4.5 h-4.5 text-white" />
+                </div>
+              )}
+              <span className="font-bold text-gray-900 text-lg tracking-tight">{brandName}</span>
             </div>
-          )}
-          <span className="font-bold text-gray-900 text-lg tracking-tight">{brandName}</span>
-        </div>
-        <div>
-          <a
-            href="/"
-            className="px-4.5 py-2 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
-          >
-            Login
-          </a>
+            {/* Nav Menu */}
+            <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-400 select-none">
+              <a href="/whois" className="text-gray-900 font-bold transition-colors">Home</a>
+              <span className="cursor-not-allowed opacity-50 hover:text-gray-400">Templates</span>
+              <span className="cursor-not-allowed opacity-50 hover:text-gray-400">Pricing</span>
+              <span className="cursor-not-allowed opacity-50 hover:text-gray-400">Features</span>
+            </nav>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
+            <a
+              href="/"
+              className="flex items-center gap-1.5 px-4 py-2 hover:bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:text-black transition-all shadow-sm"
+            >
+              <LogIn className="w-4 h-4 text-gray-400" />
+              Login
+            </a>
+            <a
+              href="/"
+              className="px-4.5 py-2 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+            >
+              Get Started
+            </a>
+          </div>
         </div>
       </header>
 
