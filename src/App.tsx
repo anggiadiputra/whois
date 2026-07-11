@@ -6,6 +6,7 @@ import AcceptInvitationPage from './pages/AcceptInvitationPage';
 import { Globe, LogIn } from 'lucide-react';
 
 const PublicWhoisPage = lazy(() => import('./pages/PublicWhoisPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   const { brandName, brandLogo } = useAuth();
@@ -48,14 +49,14 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
             <a
-              href="/"
+              href="/login"
               className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-black rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
             >
               <LogIn className="w-4 h-4 text-gray-400" />
               Login
             </a>
             <a
-              href="/"
+              href="/register"
               className="px-4 sm:px-4.5 py-2 bg-black hover:bg-gray-900 hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
             >
               Get Started
@@ -74,6 +75,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { session, loading } = useAuth();
+  const currentPath = window.location.pathname;
 
   if (loading) {
     return (
@@ -86,7 +88,7 @@ export default function App() {
     );
   }
 
-  const isAcceptInvite = window.location.pathname === '/accept-invitation';
+  const isAcceptInvite = currentPath === '/accept-invitation';
   if (isAcceptInvite) {
     return (
       <PublicLayout>
@@ -95,7 +97,7 @@ export default function App() {
     );
   }
 
-  const isPublicWhois = window.location.pathname === '/whois';
+  const isPublicWhois = currentPath === '/whois';
   if (isPublicWhois) {
     return (
       <PublicLayout>
@@ -113,9 +115,38 @@ export default function App() {
     );
   }
 
-  return session ? <WhoisPage /> : (
+  if (session) {
+    return <WhoisPage />;
+  }
+
+  if (currentPath === '/login') {
+    return (
+      <PublicLayout>
+        <LoginPage initialMode="login" />
+      </PublicLayout>
+    );
+  }
+
+  if (currentPath === '/register') {
+    return (
+      <PublicLayout>
+        <LoginPage initialMode="register" />
+      </PublicLayout>
+    );
+  }
+
+  return (
     <PublicLayout>
-      <LoginPage />
+      <Suspense fallback={
+        <div className="flex-1 flex items-center justify-center">
+          <svg className="animate-spin w-8 h-8 text-gray-700" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+        </div>
+      }>
+        <LandingPage />
+      </Suspense>
     </PublicLayout>
   );
 }

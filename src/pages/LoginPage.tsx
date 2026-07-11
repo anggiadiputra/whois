@@ -12,9 +12,18 @@ type Step = 'form' | 'otp-login' | 'otp-verify' | 'reset-password-form';
 
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-export default function LoginPage() {
+interface LoginPageProps {
+  initialMode?: 'login' | 'register' | 'forgot';
+}
+
+export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const { signIn, signUp, verifyLogin, verifyEmail, resendOTP, brandName, brandLogo } = useAuth();
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
   const [step, setStep] = useState<Step>('form');
   const [pendingUserId, setPendingUserId] = useState('');
   const [otpPurpose, setOtpPurpose] = useState<'verify' | 'login' | 'reset-password'>('login');
