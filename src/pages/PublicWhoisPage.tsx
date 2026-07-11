@@ -97,11 +97,9 @@ export default function PublicWhoisPage() {
               <span className="font-bold text-gray-900 text-lg tracking-tight">{brandName}</span>
             </div>
             {/* Nav Menu */}
-            <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-400 select-none">
-              <a href="/whois" className="text-gray-900 font-bold transition-colors">Home</a>
-              <span className="cursor-not-allowed opacity-50 hover:text-gray-400">Templates</span>
-              <span className="cursor-not-allowed opacity-50 hover:text-gray-400">Pricing</span>
-              <span className="cursor-not-allowed opacity-50 hover:text-gray-400">Features</span>
+            <nav className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm font-semibold text-gray-400 select-none">
+              <a href="/" className="text-gray-500 hover:text-black transition-colors">Beranda</a>
+              <a href="/whois" className="text-gray-900 font-bold transition-colors border-b-2 border-black pb-0.5">Whois</a>
             </nav>
           </div>
 
@@ -109,14 +107,14 @@ export default function PublicWhoisPage() {
           <div className="flex items-center gap-3">
             <a
               href="/"
-              className="flex items-center gap-1.5 px-4 py-2 hover:bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:text-black transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-black rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
             >
               <LogIn className="w-4 h-4 text-gray-400" />
               Login
             </a>
             <a
               href="/"
-              className="px-4.5 py-2 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              className="px-4 sm:px-4.5 py-2 bg-black hover:bg-gray-900 hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
             >
               Get Started
             </a>
