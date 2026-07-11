@@ -10,6 +10,8 @@ declare global {
 
 type Step = 'form' | 'otp-login' | 'otp-verify' | 'reset-password-form';
 
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
 export default function LoginPage() {
   const { signIn, signUp, verifyLogin, verifyEmail, resendOTP, brandName, brandLogo } = useAuth();
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
@@ -63,6 +65,7 @@ export default function LoginPage() {
 
   // 2. Load Turnstile widget dynamically
   useEffect(() => {
+    if (isLocalhost) return;
     if (!config.turnstileEnabled || !config.turnstileSiteKey || step !== 'form') return;
 
     // Inject Turnstile script
@@ -556,7 +559,7 @@ export default function LoginPage() {
                 )}
 
                 {/* Cloudflare Turnstile widget container */}
-                {config.turnstileEnabled && config.turnstileSiteKey && (
+                {config.turnstileEnabled && config.turnstileSiteKey && !isLocalhost && (
                   <div className="flex justify-center my-3 min-h-[65px]">
                     <div id="turnstile-widget" />
                   </div>
@@ -572,7 +575,7 @@ export default function LoginPage() {
 
                 <button
                   type="submit"
-                  disabled={loading || (config.turnstileEnabled && !turnstileToken)}
+                  disabled={loading || (config.turnstileEnabled && !isLocalhost && !turnstileToken)}
                   className="w-full py-2.5 bg-black text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 mt-2"
                 >
                   {loading ? (

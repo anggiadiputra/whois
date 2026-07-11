@@ -271,8 +271,13 @@ async function requireAuth(req, res, next) {
 // ─── Local Auth Endpoints (OTP-based & Turnstile-ready) ─────────────────────
 
 // Helper: Verify Cloudflare Turnstile token
-async function verifyTurnstile(token, ip) {
+async function verifyTurnstile(token, ip, origin) {
   try {
+    // Bypass if origin is localhost or local IP
+    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      console.log('[Turnstile] Bypassed validation for localhost request.');
+      return { ok: true };
+    }
     const settingsRes = await pool.query(
       "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('turnstile_enabled', 'turnstile_secret_key')"
     );
@@ -362,7 +367,8 @@ app.post('/api/auth/sign-up', async (req, res) => {
 
     // 2. Verify Turnstile token
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const turnstileCheck = await verifyTurnstile(turnstileToken, ip);
+    const origin = req.headers.origin || req.headers.referer || '';
+    const turnstileCheck = await verifyTurnstile(turnstileToken, ip, origin);
     if (!turnstileCheck.ok) {
       return res.status(400).json({ error: turnstileCheck.error });
     }
@@ -614,7 +620,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     // Verify Turnstile
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const turnstileCheck = await verifyTurnstile(turnstileToken, ip);
+    const origin = req.headers.origin || req.headers.referer || '';
+    const turnstileCheck = await verifyTurnstile(turnstileToken, ip, origin);
     if (!turnstileCheck.ok) {
       return res.status(400).json({ error: turnstileCheck.error });
     }
@@ -684,7 +691,8 @@ app.post('/api/auth/sign-in', async (req, res) => {
   try {
     // 1. Verify Turnstile token
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const turnstileCheck = await verifyTurnstile(turnstileToken, ip);
+    const origin = req.headers.origin || req.headers.referer || '';
+    const turnstileCheck = await verifyTurnstile(turnstileToken, ip, origin);
     if (!turnstileCheck.ok) {
       return res.status(400).json({ error: turnstileCheck.error });
     }
