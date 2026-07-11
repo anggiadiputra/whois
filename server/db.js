@@ -89,6 +89,14 @@ export async function initDb() {
       )
     `);
 
+    // Migrate saved_domains table constraints for global access
+    try {
+      await client.query('ALTER TABLE saved_domains DROP CONSTRAINT IF EXISTS saved_domains_user_id_domain_key');
+      await client.query('ALTER TABLE saved_domains ADD CONSTRAINT saved_domains_domain_key UNIQUE (domain)');
+    } catch (e) {
+      console.warn('Could not update saved_domains unique constraint:', e.message);
+    }
+
     // Migrate existing table to add hostname column if it doesn't exist
     await client.query(`
       ALTER TABLE saved_servers ADD COLUMN IF NOT EXISTS hostname VARCHAR(255)
@@ -136,12 +144,39 @@ export async function initDb() {
       )
     `);
 
+    // Create app_invitations table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS app_invitations (
+        id VARCHAR(255) PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'user',
+        token VARCHAR(255) UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create indices to optimize query performance (fast loading)
+    try {
+      await client.query('CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs (user_id)');
+      await client.query('CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs (created_at DESC)');
+      await client.query('CREATE INDEX IF NOT EXISTS idx_saved_domains_created_at ON saved_domains (created_at DESC)');
+      await client.query('CREATE INDEX IF NOT EXISTS idx_saved_servers_created_at ON saved_servers (created_at DESC)');
+      await client.query('CREATE INDEX IF NOT EXISTS idx_app_sessions_user_id ON app_sessions (user_id)');
+    } catch (e) {
+      console.warn('Could not create database indexes:', e.message);
+    }
+
     // Insert default empty settings if not exist
     const defaultSettings = [
       ['fonnte_token', ''],
-      ['brevo_api_key', ''],
-      ['brevo_sender_email', ''],
-      ['brevo_sender_name', 'DomainWhois Alerts'],
+      ['kirisan_token', ''],
+      ['kirisan_channel_key', ''],
+      ['kirisan_template_id', ''],
+      ['kirisan_login_otp_template_id', ''],
+      ['kirisan_register_otp_template_id', ''],
+      ['kirisan_reset_password_template_id', ''],
       ['recipient_email', ''],
       ['recipient_whatsapp', ''],
       ['alert_days_before', '30,7,3,1'],
@@ -161,6 +196,39 @@ export async function initDb() {
       `, [key, val]);
     }
 
+    // Migration: Copy value of old kirisan_otp_template_id to new login/register settings if they are empty
+    try {
+      const oldOtpRes = await client.query("SELECT setting_value FROM app_settings WHERE setting_key = 'kirisan_otp_template_id'");
+      if (oldOtpRes.rows.length > 0) {
+        const oldVal = oldOtpRes.rows[0].setting_value;
+        if (oldVal) {
+          // Check if new settings are currently empty
+          const newSettingsRes = await client.query(
+            "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('kirisan_login_otp_template_id', 'kirisan_register_otp_template_id')"
+          );
+          let loginEmpty = true;
+          let registerEmpty = true;
+          newSettingsRes.rows.forEach(r => {
+            if (r.setting_key === 'kirisan_login_otp_template_id' && r.setting_value) loginEmpty = false;
+            if (r.setting_key === 'kirisan_register_otp_template_id' && r.setting_value) registerEmpty = false;
+          });
+
+          if (loginEmpty) {
+            await client.query("UPDATE app_settings SET setting_value = $1 WHERE setting_key = 'kirisan_login_otp_template_id'", [oldVal]);
+            console.log('[Migration] Migrated old kirisan_otp_template_id value to kirisan_login_otp_template_id');
+          }
+          if (registerEmpty) {
+            await client.query("UPDATE app_settings SET setting_value = $1 WHERE setting_key = 'kirisan_register_otp_template_id'", [oldVal]);
+            console.log('[Migration] Migrated old kirisan_otp_template_id value to kirisan_register_otp_template_id');
+          }
+          
+          // Delete the old key so we don't repeat migration next time
+          await client.query("DELETE FROM app_settings WHERE setting_key = 'kirisan_otp_template_id'");
+        }
+      }
+    } catch (migErr) {
+      console.warn('Migration error for old kirisan_otp_template_id:', migErr.message);
+    }
 
     console.log('Database tables verified/created successfully.');
   } catch (err) {

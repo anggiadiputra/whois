@@ -48,9 +48,9 @@ export async function checkExpirationsAndNotify(force = false) {
     });
 
     const fonnteToken = settings['fonnte_token'] || '';
-    const brevoApiKey = settings['brevo_api_key'] || '';
-    const brevoSenderEmail = settings['brevo_sender_email'] || '';
-    const brevoSenderName = settings['brevo_sender_name'] || 'DomainWhois Alerts';
+    const kirisanToken = settings['kirisan_token'] || '';
+    const kirisanChannelKey = settings['kirisan_channel_key'] || '';
+    const kirisanTemplateId = settings['kirisan_template_id'] || '';
     const recipientEmail = settings['recipient_email'] || '';
     const recipientWhatsapp = settings['recipient_whatsapp'] || '';
     const alertDaysStr = settings['alert_days_before'] || '30,7,3,1';
@@ -218,56 +218,83 @@ export async function checkExpirationsAndNotify(force = false) {
     // 4. Dispatch Email
     let emailSent = false;
     if (recipientEmail) {
-      if (brevoApiKey) {
-        console.log(`[Notifier] Sending email via Brevo API to ${recipientEmail}...`);
+      // Kirisan email requires a Template ID (configured in Kirisan dashboard)
+      // Docs: email channel only supports content.email.template, not inline message
+      // Keys format must be object: { "email": { "token": "..." } }
+      if (kirisanToken && kirisanChannelKey && kirisanTemplateId) {
+        console.log('[Notifier] Sending email via Kirisan API...');
         try {
-          const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+          const kirisanRes = await fetch('https://api.kirisan.com/v1/send', {
             method: 'POST',
             headers: {
-              'accept': 'application/json',
-              'api-key': brevoApiKey,
-              'content-type': 'application/json'
+              'Authorization': `Bearer ${kirisanToken}`,
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              sender: { 
-                name: brevoSenderName, 
-                email: brevoSenderEmail || 'noreply@domainwhois.com' 
+              keys: {
+                email: {
+                  token: kirisanChannelKey
+                }
               },
-              to: [{ email: recipientEmail }],
-              subject: `⚠️ Alert Layanan Expiring — DomainWhois`,
-              htmlContent: emailHtml
+              target: {
+                email: recipientEmail,
+                variables: {
+                  alerts_text: alerts.map(a => `- ${a.name} (${a.daysLeft} hari lagi) - Expired: ${formatDateString(a.expiryDate)}`).join('\n'),
+                  alerts_html: `<ul>` + alerts.map(a => `<li><strong>${a.name}</strong> (${a.daysLeft} hari lagi) - Expired: ${formatDateString(a.expiryDate)}</li>`).join('') + `</ul>`,
+                  alerts_count: alerts.length,
+                  first_alert_name: alerts[0]?.name || '',
+                  first_alert_days: alerts[0]?.daysLeft || 0,
+                  first_alert_expiry: alerts[0]?.expiryDate ? formatDateString(alerts[0].expiryDate) : ''
+                }
+              },
+              content: {
+                email: {
+                  template: parseInt(kirisanTemplateId, 10)
+                }
+              }
             })
           });
-          if (brevoRes.ok) {
-            console.log('[Notifier] Email successfully sent via Brevo!');
-            emailSent = true;
-            await logNotificationActivity(
-              'Email Alert (Brevo)',
-              `Email alert successfully sent to ${recipientEmail} via Brevo API.\n\nDomains checked: ${alerts.map(a => `${a.domain} (${a.diffDays} days left)`).join(', ')}`
-            );
+          if (kirisanRes.ok) {
+            const resData = await kirisanRes.json();
+            if (resData.status) {
+              console.log('[Notifier] Email successfully sent via Kirisan!');
+              emailSent = true;
+              await logNotificationActivity(
+                'Email Alert (Kirisan)',
+                `Email alert successfully sent to ${recipientEmail} via Kirisan API.\n\nDomains/Servers checked: ${alerts.map(a => `${a.name} (${a.daysLeft} days left)`).join(', ')}`
+              );
+            } else {
+              console.error('[Notifier] Failed to send via Kirisan:', resData.reason);
+              await logNotificationActivity(
+                'Email Alert Failed (Kirisan)',
+                `Failed to send Email alert to ${recipientEmail} via Kirisan. Reason: ${resData.reason}\n\nDomains/Servers checked: ${alerts.map(a => `${a.name} (${a.daysLeft} days left)`).join(', ')}`
+              );
+            }
           } else {
-            const errBody = await brevoRes.text();
-            console.error('[Notifier] Failed to send via Brevo:', errBody);
+            const errBody = await kirisanRes.text();
+            console.error('[Notifier] Kirisan API error HTTP status:', kirisanRes.status, errBody);
             await logNotificationActivity(
-              'Email Alert Failed (Brevo)',
-              `Failed to send Email alert to ${recipientEmail} via Brevo. Error: ${errBody}\n\nDomains checked: ${alerts.map(a => `${a.domain} (${a.diffDays} days left)`).join(', ')}`
+              'Email Alert Failed (Kirisan)',
+              `Failed to send Email alert to ${recipientEmail} via Kirisan. HTTP Error ${kirisanRes.status}: ${errBody}\n\nDomains/Servers checked: ${alerts.map(a => `${a.name} (${a.daysLeft} days left)`).join(', ')}`
             );
           }
         } catch (err) {
-          console.error('[Notifier] Brevo API Error:', err.message);
+          console.error('[Notifier] Kirisan API Error:', err.message);
           await logNotificationActivity(
-            'Email Alert Failed (Brevo)',
-            `Brevo API call error: ${err.message}\n\nDomains checked: ${alerts.map(a => `${a.domain} (${a.diffDays} days left)`).join(', ')}`
+            'Email Alert Failed (Kirisan)',
+            `Kirisan API call error: ${err.message}\n\nDomains/Servers checked: ${alerts.map(a => `${a.name} (${a.daysLeft} days left)`).join(', ')}`
           );
         }
+      } else if (kirisanToken && kirisanChannelKey && !kirisanTemplateId) {
+        console.log('[Notifier] Kirisan configured but no Template ID set — skipping Kirisan, falling back to SMTP.');
       }
 
-      // Fallback to default Nodemailer if Brevo wasn't successful or configured
+      // Fallback to default Nodemailer if Kirisan wasn't successful or configured
       if (!emailSent) {
         const EMAIL_CONFIGURED = !!(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS &&
           process.env.EMAIL_HOST !== 'smtp.example.com');
         if (EMAIL_CONFIGURED) {
-          console.log(`[Notifier] Sending email via local SMTP to ${recipientEmail}...`);
+          console.log('[Notifier] Sending email via local SMTP...');
           try {
             const emailTransporter = nodemailer.createTransport({
               host: process.env.EMAIL_HOST,
@@ -288,20 +315,20 @@ export async function checkExpirationsAndNotify(force = false) {
             emailSent = true;
             await logNotificationActivity(
               'Email Alert (SMTP)',
-              `Email alert successfully sent to ${recipientEmail} via local SMTP.\n\nDomains checked: ${alerts.map(a => `${a.domain} (${a.diffDays} days left)`).join(', ')}`
+              `Email alert successfully sent to ${recipientEmail} via local SMTP.\n\nDomains/Servers checked: ${alerts.map(a => `${a.name} (${a.daysLeft} days left)`).join(', ')}`
             );
           } catch (err) {
             console.error('[Notifier] Local SMTP Error:', err.message);
             await logNotificationActivity(
               'Email Alert Failed (SMTP)',
-              `Failed to send Email alert to ${recipientEmail} via local SMTP. Error: ${err.message}\n\nDomains checked: ${alerts.map(a => `${a.domain} (${a.diffDays} days left)`).join(', ')}`
+              `Failed to send Email alert to ${recipientEmail} via local SMTP. Error: ${err.message}\n\nDomains/Servers checked: ${alerts.map(a => `${a.name} (${a.daysLeft} days left)`).join(', ')}`
             );
           }
         } else {
-          console.log(`\n📧 [DEV MODE - EMAIL NOT SENT]\nTo: ${recipientEmail}\nContent:\n${emailHtml}\n`);
+          console.log('[Notifier] Dev mode — email not configured, skipping email send.');
           await logNotificationActivity(
             'Email Alert (Dev Mode)',
-            `Email alert would be sent to ${recipientEmail} (SMTP/Brevo not configured).\n\nDomains checked: ${alerts.map(a => `${a.domain} (${a.diffDays} days left)`).join(', ')}`
+            `Email alert would be sent to ${recipientEmail} (SMTP/Kirisan not configured).\n\nDomains/Servers checked: ${alerts.map(a => `${a.name} (${a.daysLeft} days left)`).join(', ')}`
           );
         }
       }
@@ -309,7 +336,7 @@ export async function checkExpirationsAndNotify(force = false) {
 
     // 5. Dispatch WhatsApp via Fonnte
     if (recipientWhatsapp && fonnteToken) {
-      console.log(`[Notifier] Sending WhatsApp via Fonnte to ${recipientWhatsapp}...`);
+      console.log('[Notifier] Sending WhatsApp via Fonnte...');
       try {
         const data = new FormData();
         data.append("target", recipientWhatsapp);
@@ -325,7 +352,7 @@ export async function checkExpirationsAndNotify(force = false) {
         });
         if (fonnteRes.ok) {
           const resJson = await fonnteRes.json();
-          console.log('[Notifier] WhatsApp alert successfully sent via Fonnte! Response:', resJson);
+          console.log('[Notifier] WhatsApp alert successfully sent via Fonnte!');
           await logNotificationActivity(
             'WhatsApp Alert (Fonnte)',
             `WhatsApp alert successfully sent to ${recipientWhatsapp} via Fonnte API.\n\nMessage:\n${waMessage}\n\nFonnte Response: ${JSON.stringify(resJson)}`
@@ -346,7 +373,7 @@ export async function checkExpirationsAndNotify(force = false) {
         );
       }
     } else {
-      console.log(`\n💬 [DEV MODE - WHATSAPP NOT SENT]\nTo: ${recipientWhatsapp}\nMessage:\n${waMessage}\n`);
+      console.log('[Notifier] Dev mode — Fonnte not configured, skipping WhatsApp send.');
       await logNotificationActivity(
         'WhatsApp Alert (Dev Mode)',
         `WhatsApp alert would be sent to ${recipientWhatsapp} (Fonnte not configured).\n\nMessage:\n${waMessage}`

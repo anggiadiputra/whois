@@ -13,7 +13,7 @@ type AuthContextType = {
   signUp: (email: string, password: string, name?: string, turnstileToken?: string) => Promise<{ error: string | null; step?: string; userId?: string; message?: string; debugOtp?: string }>;
   verifyLogin: (userId: string, otp: string) => Promise<{ error: string | null }>;
   verifyEmail: (userId: string, otp: string) => Promise<{ error: string | null }>;
-  resendOTP: (userId: string, purpose: 'verify' | 'login') => Promise<{ error: string | null; message?: string }>;
+  resendOTP: (userId: string, purpose: 'verify' | 'login' | 'reset-password') => Promise<{ error: string | null; message?: string }>;
   signOut: () => Promise<void>;
   updateUser: (updatedUser: any) => void;
   // Idle timer state
@@ -237,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const resendOTP = useCallback(async (userId: string, purpose: 'verify' | 'login') => {
+  const resendOTP = useCallback(async (userId: string, purpose: 'verify' | 'login' | 'reset-password') => {
     try {
       const res = await fetch(`${API_URL}/auth/resend-otp`, {
         method: 'POST',

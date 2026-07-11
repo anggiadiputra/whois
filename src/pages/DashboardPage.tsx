@@ -1,17 +1,32 @@
 import React from 'react';
 import { 
-  Globe, Clock, AlertCircle, CheckCircle2, ShieldAlert, Layers, Database, ArrowRight, MessageSquare, Mail, X, Search
+  Globe, Clock, AlertCircle, CheckCircle2, ShieldAlert, Layers, Database, ArrowRight, MessageSquare, Mail, X, Search, Server
 } from 'lucide-react';
 import { SavedDomain } from '../lib/neon';
 
 interface DashboardPageProps {
   savedDomains: SavedDomain[];
+  servers?: any[];
   onNavigateToTab: (tabPath: string) => void;
   onSelectDomain: (domain: SavedDomain) => void;
   sessionToken?: string;
+  userName?: string;
 }
 
-export default function DashboardPage({ savedDomains, onNavigateToTab, onSelectDomain, sessionToken }: DashboardPageProps) {
+function parseLocalMidnight(dateStr: string | null | undefined) {
+  if (!dateStr) return new Date(NaN);
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    return new Date(year, month, day);
+  }
+  const d = new Date(dateStr);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+export default function DashboardPage({ savedDomains, servers = [], onNavigateToTab, onSelectDomain, sessionToken, userName }: DashboardPageProps) {
   const [notificationLogs, setNotificationLogs] = React.useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = React.useState(true);
   const [selectedLog, setSelectedLog] = React.useState<any | null>(null);
@@ -42,12 +57,12 @@ export default function DashboardPage({ savedDomains, onNavigateToTab, onSelectD
     // Determine expiration status
     if (sd.expiry_date) {
       try {
-        const expiry = new Date(sd.expiry_date);
+        const expiry = parseLocalMidnight(sd.expiry_date);
         if (expiry < now) {
           expiredCount++;
         } else {
           const diffTime = expiry.getTime() - now.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
           if (diffDays <= 30) {
             expiringCount++;
           }
@@ -73,20 +88,46 @@ export default function DashboardPage({ savedDomains, onNavigateToTab, onSelectD
 
   const activeCount = totalDomains - expiredCount - expiringCount;
 
+  // 1.5 Process server statistics
+  const totalServers = servers.length;
+  let expiredServersCount = 0;
+  let expiringServersCount = 0;
+
+  servers.forEach(srv => {
+    if (srv.expired_date) {
+      try {
+        const expiry = parseLocalMidnight(srv.expired_date);
+        if (expiry < now) {
+          expiredServersCount++;
+        } else {
+          const diffTime = expiry.getTime() - now.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays <= 30) {
+            expiringServersCount++;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  });
+
+  const activeServersCount = totalServers - expiredServersCount - expiringServersCount;
+
   // 2. Identify expired and expiring domains (critical list)
   const criticalDomains = savedDomains.filter(sd => {
     if (!sd.expiry_date) return false;
     try {
-      const expiry = new Date(sd.expiry_date);
+      const expiry = parseLocalMidnight(sd.expiry_date);
       if (expiry < now) return true;
       const diffTime = expiry.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
       return diffDays <= 30;
     } catch {
       return false;
     }
   }).map(sd => {
-    const expiry = new Date(sd.expiry_date!);
+    const expiry = parseLocalMidnight(sd.expiry_date!);
     let statusLabel = '';
     let statusClass = '';
     let diffDays = 0;
@@ -97,7 +138,7 @@ export default function DashboardPage({ savedDomains, onNavigateToTab, onSelectD
       statusClass = 'bg-red-50 text-red-700 border-red-200';
     } else {
       const diffTime = expiry.getTime() - now.getTime();
-      diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
       statusLabel = `${diffDays} hari lagi`;
       statusClass = 'bg-amber-50 text-amber-700 border-amber-200';
     }
@@ -152,10 +193,10 @@ export default function DashboardPage({ savedDomains, onNavigateToTab, onSelectD
             'WhatsApp Alert (Fonnte)',
             'WhatsApp Alert Failed (Fonnte)',
             'WhatsApp Alert (Dev Mode)',
-            'Email Alert (Brevo)',
+            'Email Alert (Kirisan)',
             'Email Alert (SMTP)',
             'Email Alert (Dev Mode)',
-            'Email Alert Failed (Brevo)',
+            'Email Alert Failed (Kirisan)',
             'Email Alert Failed (SMTP)',
             'Test Alerts'
           ];
@@ -184,34 +225,43 @@ export default function DashboardPage({ savedDomains, onNavigateToTab, onSelectD
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Dashboard</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-1">
+            Halo, {userName || 'Pengguna'} 👋
+          </h1>
           <p className="text-sm text-gray-500 font-normal">Ringkasan status domain dan performa portfolio server monitor Anda.</p>
         </div>
       </div>
 
       {/* Warning Banner */}
-      {(expiredCount > 0 || expiringCount > 0) && (
+      {(expiredCount > 0 || expiringCount > 0 || expiredServersCount > 0 || expiringServersCount > 0) && (
         <div className="bg-red-50 border border-red-100 rounded-2xl p-4 md:p-5 flex items-start gap-4 animate-fade-in shadow-sm">
           <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
             <ShieldAlert className="w-5.5 h-5.5 text-red-600" />
           </div>
           <div className="flex-1 space-y-1">
-            <h3 className="text-sm font-bold text-red-950">Domain Butuh Perhatian Segera</h3>
+            <h3 className="text-sm font-bold text-red-950">Aset Monitor Butuh Perhatian Segera</h3>
             <p className="text-xs text-red-700 leading-relaxed font-normal">
-              Terdapat <span className="font-bold">{expiredCount} domain sudah expired</span> dan{' '}
-              <span className="font-bold">{expiringCount} domain akan expired dalam 30 hari ke depan</span>. 
-              Segera perbarui registrasi domain tersebut untuk menghindari kehilangan hak kepemilikan.
+              { (expiredCount > 0 || expiringCount > 0) && (
+                <span>
+                  Terdapat <span className="font-bold">{expiredCount} domain expired</span> dan{' '}
+                  <span className="font-bold">{expiringCount} domain mendekati expired</span>.{' '}
+                </span>
+              )}
+              { (expiredServersCount > 0 || expiringServersCount > 0) && (
+                <span>
+                  Terdapat <span className="font-bold">{expiredServersCount} server expired</span> dan{' '}
+                  <span className="font-bold">{expiringServersCount} server mendekati expired</span>.
+                </span>
+              )}
+              Segera perbarui status aset Anda untuk mencegah gangguan akses layanan.
             </p>
-            <button
-              onClick={() => onNavigateToTab('/my-domains')}
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-red-800 hover:text-red-950 transition-colors pt-1"
-            >
-              Kelola Domain Sekarang
-              <ArrowRight className="w-3 h-3" />
-            </button>
           </div>
         </div>
       )}
+
+      <div>
+        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Ringkasan Domain</h2>
+      </div>
 
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -273,6 +323,56 @@ export default function DashboardPage({ savedDomains, onNavigateToTab, onSelectD
           <div>
             <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Sudah Expired</p>
             <p className={`text-2xl font-black mt-0.5 ${expiredCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{expiredCount}</p>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Server Stats Grid */}
+      <div className="mt-8">
+        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Ringkasan Server</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {/* Card 1: Total Servers */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center shrink-0">
+              <Server className="w-5.5 h-5.5 text-white" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Server</p>
+              <p className="text-2xl font-black text-gray-900 mt-0.5">{totalServers}</p>
+            </div>
+          </div>
+
+          {/* Card 2: Active Servers */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0 border border-emerald-100">
+              <CheckCircle2 className="w-5.5 h-5.5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Server Aktif</p>
+              <p className="text-2xl font-black text-emerald-650 mt-0.5">{activeServersCount}</p>
+            </div>
+          </div>
+
+          {/* Card 3: Expired / Expiring Servers */}
+          <div className={`rounded-2xl shadow-sm border p-5 flex items-center gap-4 hover:shadow-md transition-all ${
+            (expiredServersCount > 0 || expiringServersCount > 0)
+              ? 'bg-amber-50/40 border-amber-200'
+              : 'bg-white border-gray-200'
+          }`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${
+              (expiredServersCount > 0 || expiringServersCount > 0)
+                ? 'bg-amber-100/80 border-amber-200 text-amber-600'
+                : 'bg-gray-50 border-gray-100 text-gray-400'
+            }`}>
+              <Clock className="w-5.5 h-5.5" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Expired / Mendekati</p>
+              <p className={`text-2xl font-black mt-0.5 ${(expiredServersCount > 0 || expiringServersCount > 0) ? 'text-amber-600' : 'text-gray-900'}`}>
+                {expiredServersCount + expiringServersCount}
+              </p>
+            </div>
           </div>
         </div>
 

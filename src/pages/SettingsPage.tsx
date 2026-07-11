@@ -10,9 +10,12 @@ export default function SettingsPage() {
   const { session, refreshBrandConfig } = useAuth();
   const [settings, setSettings] = useState({
     fonnte_token: '',
-    brevo_api_key: '',
-    brevo_sender_email: '',
-    brevo_sender_name: 'DomainWhois Alerts',
+    kirisan_token: '',
+    kirisan_channel_key: '',
+    kirisan_template_id: '',
+    kirisan_login_otp_template_id: '',
+    kirisan_register_otp_template_id: '',
+    kirisan_reset_password_template_id: '',
     recipient_email: '',
     recipient_whatsapp: '',
     alert_days_before: '30,7,3,1',
@@ -27,6 +30,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingKirisan, setTestingKirisan] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Fetch current settings
@@ -129,6 +133,44 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: 'Gagal mengirim uji coba notifikasi.' });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleTestKirisan = async () => {
+    setMessage(null);
+    setTestingKirisan(true);
+    try {
+      const res = await fetch(`${API_URL}/settings/test-kirisan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.token}`
+        },
+        body: JSON.stringify({
+          kirisan_token: settings.kirisan_token,
+          kirisan_channel_key: settings.kirisan_channel_key,
+          kirisan_template_id: settings.kirisan_template_id,
+          recipient_email: settings.recipient_email
+        })
+      });
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (res.ok) {
+          setMessage({ type: 'success', text: data.message || 'Koneksi Kirisan berhasil!' });
+        } else {
+          setMessage({ type: 'error', text: data.error || 'Koneksi Kirisan gagal.' });
+        }
+      } else {
+        const text = await res.text();
+        setMessage({ type: 'error', text: `Server error (${res.status}). Silakan restart server backend.` });
+        console.error('Non-JSON response:', text);
+      }
+    } catch (err) {
+      console.error('Failed to test Kirisan connection:', err);
+      setMessage({ type: 'error', text: 'Gagal mengirim uji coba koneksi Kirisan.' });
+    } finally {
+      setTestingKirisan(false);
     }
   };
 
@@ -380,50 +422,136 @@ export default function SettingsPage() {
                     <Mail className="w-4.5 h-4.5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-gray-900">Integrasi Email (Brevo / Sendinblue)</h2>
-                    <p className="text-[11px] text-gray-500 font-normal mt-0.5">Kirim email aman melalui SMTP relay atau HTTP API Brevo.</p>
+                    <h2 className="text-sm font-bold text-gray-900">Integrasi Email (Kirisan)</h2>
+                    <p className="text-[11px] text-gray-500 font-normal mt-0.5">Kirim email notifikasi via Kirisan API menggunakan template yang sudah dibuat di dashboard Kirisan.</p>
                   </div>
                 </div>
 
+                {/* Info box about template requirement */}
+                <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
+                    Kirisan email hanya mendukung pengiriman via <strong>Template</strong>. Buat template di <strong>Channel → Email → Templates</strong> pada dashboard Kirisan, lalu salin ID-nya ke field di bawah.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">Brevo API Key (v3)</label>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">Kirisan Account Token</label>
                     <div className="relative">
                       <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                       <input
                         type="password"
-                        name="brevo_api_key"
-                        value={settings.brevo_api_key}
+                        name="kirisan_token"
+                        value={settings.kirisan_token}
                         onChange={handleChange}
-                        placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxx"
+                        placeholder="Token Akun Kirisan"
                         className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black transition-shadow"
                       />
                     </div>
+                    <p className="text-[10px] text-gray-400 mt-1 font-normal">Dari Account → Settings di dashboard Kirisan.</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">Email Pengirim</label>
-                    <input
-                      type="email"
-                      name="brevo_sender_email"
-                      value={settings.brevo_sender_email}
-                      onChange={handleChange}
-                      placeholder="sender@domainanda.com"
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black transition-shadow"
-                    />
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">Kirisan Channel Key (Email)</label>
+                    <div className="relative">
+                      <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                      <input
+                        type="password"
+                        name="kirisan_channel_key"
+                        value={settings.kirisan_channel_key}
+                        onChange={handleChange}
+                        placeholder="Key Channel Email Kirisan"
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black transition-shadow"
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1 font-normal">Dari Channel → Email → Token di dashboard Kirisan.</p>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5">Nama Pengirim</label>
-                    <input
-                      type="text"
-                      name="brevo_sender_name"
-                      value={settings.brevo_sender_name}
-                      onChange={handleChange}
-                      placeholder="Nama Pengirim Notifikasi"
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black transition-shadow"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:col-span-2">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
+                        Kirisan Expiry Alert Template ID
+                        <span className="text-[9px] font-normal text-red-400 normal-case bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md">Wajib</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="kirisan_template_id"
+                        value={settings.kirisan_template_id}
+                        onChange={handleChange}
+                        placeholder="ID template email notifikasi kedaluwarsa"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black transition-shadow font-mono"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1 font-normal">Salin dari Channel → Email → Templates.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
+                        Kirisan Reset Password Template ID
+                        <span className="text-[9px] font-normal text-red-400 normal-case bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md">Wajib</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="kirisan_reset_password_template_id"
+                        value={settings.kirisan_reset_password_template_id}
+                        onChange={handleChange}
+                        placeholder="ID template email reset password"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black transition-shadow font-mono"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1 font-normal">Untuk verifikasi permintaan reset kata sandi.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
+                        Kirisan Login OTP Template ID
+                        <span className="text-[9px] font-normal text-red-400 normal-case bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md">Wajib</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="kirisan_login_otp_template_id"
+                        value={settings.kirisan_login_otp_template_id}
+                        onChange={handleChange}
+                        placeholder="ID template email Login OTP"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black transition-shadow font-mono"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1 font-normal">Untuk verifikasi login akun.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
+                        Kirisan Register OTP Template ID
+                        <span className="text-[9px] font-normal text-red-400 normal-case bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md">Wajib</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="kirisan_register_otp_template_id"
+                        value={settings.kirisan_register_otp_template_id}
+                        onChange={handleChange}
+                        placeholder="ID template email verifikasi registrasi"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black transition-shadow font-mono"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1 font-normal">Untuk verifikasi alamat email pendaftaran baru.</p>
+                    </div>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                  <span className="text-[10px] text-gray-400 font-medium italic">
+                    Uji koneksi: kirim email tes ke penerima menggunakan template yang ditentukan.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleTestKirisan}
+                    disabled={testingKirisan || !settings.kirisan_token || !settings.kirisan_channel_key || !settings.kirisan_template_id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 hover:text-black border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold transition-colors"
+                  >
+                    {testingKirisan ? (
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Play className="w-3 h-3 text-emerald-600" />
+                    )}
+                    Test Koneksi
+                  </button>
                 </div>
               </div>
 

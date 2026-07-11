@@ -26,6 +26,8 @@ export default function UserManagementPage() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [submitting, setSubmitting] = useState(false);
+  const [successLink, setSuccessLink] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Search & Pagination states
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,8 +82,8 @@ export default function UserManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || (!editingUser && !password.trim())) {
-      alert('Email and Password are required.');
+    if (!email.trim()) {
+      alert('Email is required.');
       return;
     }
 
@@ -90,7 +92,7 @@ export default function UserManagementPage() {
       const payload = {
         email: email.trim(),
         name: name.trim() || email.split('@')[0],
-        password: password.trim() || undefined,
+        password: editingUser && password.trim() ? password.trim() : undefined,
         role,
       };
 
@@ -112,6 +114,13 @@ export default function UserManagementPage() {
       setIsModalOpen(false);
       resetForm();
       await fetchUsers();
+
+      if (data.debugInvite) {
+        setSuccessLink(data.debugInvite);
+        setSuccessMsg(data.message || 'Undangan berhasil dibuat.');
+      } else if (!editingUser) {
+        alert(data.message || 'Undangan berhasil dikirim.');
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to save user.');
     } finally {
@@ -185,6 +194,33 @@ export default function UserManagementPage() {
           Tambah Pengguna
         </button>
       </div>
+
+      {successLink && (
+        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex flex-col gap-2.5 text-emerald-800 text-sm font-medium relative animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{successMsg}</span>
+            <button 
+              onClick={() => { setSuccessLink(null); setSuccessMsg(null); }}
+              className="ml-auto p-1 hover:bg-emerald-100 rounded-lg text-emerald-600 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white/60 p-2.5 rounded-lg border border-emerald-100/50">
+            <span className="font-mono text-xs text-gray-600 break-all select-all flex-1 py-1 px-1.5">{successLink}</span>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(successLink);
+                alert('Link undangan berhasil disalin!');
+              }}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md transition-colors text-center shrink-0"
+            >
+              Salin Link
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-700 text-sm font-medium">
@@ -393,22 +429,27 @@ export default function UserManagementPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  Password {editingUser && <span className="text-gray-400 font-normal text-[10px]">(Kosongkan jika tidak ingin diubah)</span>} {!editingUser && <span className="text-red-500">*</span>}
-                </label>
-                <div className="relative">
-                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="password"
-                    required={!editingUser}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={editingUser ? '••••••••' : 'Password baru'}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-black text-gray-800 font-mono"
-                  />
+              {!editingUser ? (
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-blue-700 text-xs leading-relaxed">
+                  Sistem akan mengirimkan link undangan ke email user untuk membuat password mereka sendiri dan mengaktifkan akun.
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                    Password <span className="text-gray-400 font-normal text-[10px]">(Kosongkan jika tidak ingin diubah)</span>
+                  </label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-black text-gray-800 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Role / Hak Akses</label>

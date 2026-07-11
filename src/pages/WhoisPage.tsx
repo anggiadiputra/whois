@@ -28,6 +28,19 @@ function formatDate(iso: string | null | undefined): string {
   }
 }
 
+function parseLocalMidnight(dateStr: string | null | undefined) {
+  if (!dateStr) return new Date(NaN);
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    return new Date(year, month, day);
+  }
+  const d = new Date(dateStr);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 function getExpiryStatus(expiryDateStr: string | null | undefined) {
   if (!expiryDateStr) {
     return { 
@@ -38,7 +51,7 @@ function getExpiryStatus(expiryDateStr: string | null | undefined) {
     };
   }
   try {
-    const expiry = new Date(expiryDateStr);
+    const expiry = parseLocalMidnight(expiryDateStr);
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     
@@ -52,7 +65,7 @@ function getExpiryStatus(expiryDateStr: string | null | undefined) {
     }
     
     const diffTime = expiry.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays <= 30) {
       return {
@@ -548,11 +561,29 @@ export default function WhoisPage() {
   const savedEntry = result ? savedDomains.find(d => d.domain === result.domain) : null;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [mobileProfileDropdownOpen, setMobileProfileDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+      if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target as Node)) {
+        setMobileProfileDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <>
     <div className="min-h-screen bg-[#f0f2f5] flex flex-col md:flex-row relative">
-      {/* Mobile Top Navbar */}
       <header className="md:hidden bg-white border-b border-gray-200 h-14 px-4 flex items-center justify-between sticky top-0 z-20 w-full">
         <div className="flex items-center gap-2">
           {brandLogo ? (
@@ -564,12 +595,51 @@ export default function WhoisPage() {
           )}
           <span className="font-bold text-gray-900 text-base tracking-tight">{brandName}</span>
         </div>
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-600 transition-colors"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* User Profile Dropdown for Mobile */}
+          <div className="relative" ref={mobileDropdownRef}>
+            <button
+              onClick={() => setMobileProfileDropdownOpen(!mobileProfileDropdownOpen)}
+              className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center font-bold text-xs hover:opacity-85 focus:outline-none"
+            >
+              {(user?.name || user?.email || 'U')[0].toUpperCase()}
+            </button>
+            {mobileProfileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl border border-gray-200 shadow-lg py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <p className="text-xs font-bold text-gray-900 truncate">{user?.name || user?.email.split('@')[0]}</p>
+                  {user?.role === 'admin' && <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">admin</p>}
+                </div>
+                <button
+                  onClick={() => {
+                    setMobileProfileDropdownOpen(false);
+                    navigate('/profile');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-black transition-colors text-left"
+                >
+                  <User className="w-4 h-4 text-gray-400" />
+                  Profil Saya
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileProfileDropdownOpen(false);
+                    signOut();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors text-left border-t border-gray-100"
+                >
+                  <LogOut className="w-4 h-4 text-red-500" />
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-600 transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* Mobile Sidebar Backdrop Overlay */}
@@ -695,17 +765,6 @@ export default function WhoisPage() {
               <Activity className="w-4 h-4" />
               My Activity
             </button>
-            <button
-              onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === 'profile'
-                  ? 'bg-black text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              Profil Saya
-            </button>
             {user?.role === 'admin' && (
               <>
                 <button
@@ -745,57 +804,52 @@ export default function WhoisPage() {
             )}
           </nav>
         </div>
-
-        {/* Bottom Section */}
-        <div className="p-4 border-t border-gray-100 space-y-3">
-          <div className="px-3 py-1.5">
-            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Account</p>
-            <p className="text-xs font-semibold text-gray-700 truncate mt-0.5" title={user?.email}>{user?.email}</p>
-          </div>
-          <button
-            onClick={signOut}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
-        </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Desktop Top Navbar */}
         <header className="hidden md:flex bg-white border-b border-gray-200 h-14 px-6 items-center justify-between sticky top-0 z-10 w-full shrink-0">
           <div>
-            <span className="text-xs font-bold text-gray-800 uppercase tracking-widest">
-              {activeTab === 'dashboard'
-                ? 'Dashboard Statistik'
-                : activeTab === 'lookup'
-                  ? 'WHOIS Domain Lookup'
-                  : activeTab === 'bulk'
-                    ? 'Bulk WHOIS Lookup'
-                    : activeTab === 'saved'
-                      ? 'My Domains'
-                      : activeTab === 'servers'
-                        ? 'Server Monitor'
-                        : activeTab === 'activity'
-                          ? 'Aktivitas Pengguna'
-                          : activeTab === 'my-activity'
-                            ? 'Aktivitas Akun'
-                            : activeTab === 'profile'
-                              ? 'Profil Saya'
-                              : activeTab === 'settings'
-                                ? 'Pengaturan Brand'
-                                : 'WHOIS'}
-            </span>
+            {/* Page title removed */}
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-xs font-bold text-gray-900">{user?.name || user?.email.split('@')[0]}</p>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{user?.role || 'user'}</p>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center font-bold text-xs">
-              {(user?.name || user?.email || 'U')[0].toUpperCase()}
-            </div>
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center gap-3 text-left hover:opacity-85 focus:outline-none rounded-lg p-1 transition-all"
+            >
+              <div className="text-right">
+                <p className="text-xs font-bold text-gray-900">{user?.name || user?.email.split('@')[0]}</p>
+                {user?.role === 'admin' && <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">admin</p>}
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center font-bold text-xs">
+                {(user?.name || user?.email || 'U')[0].toUpperCase()}
+              </div>
+            </button>
+
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl border border-gray-200 shadow-lg py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <button
+                  onClick={() => {
+                    setProfileDropdownOpen(false);
+                    navigate('/profile');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-black transition-colors text-left"
+                >
+                  <User className="w-4 h-4 text-gray-400" />
+                  Profil Saya
+                </button>
+                <button
+                  onClick={() => {
+                    setProfileDropdownOpen(false);
+                    signOut();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors text-left border-t border-gray-100"
+                >
+                  <LogOut className="w-4 h-4 text-red-500" />
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -1294,10 +1348,10 @@ export default function WhoisPage() {
             <span className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">Memuat Halaman...</span>
           </div>
         }>
-          {/* Dashboard Page */}
           {activeTab === 'dashboard' && (
             <DashboardPage 
               savedDomains={savedDomains} 
+              servers={servers}
               onNavigateToTab={navigate}
               onSelectDomain={(domain) => {
                 setSelectedSavedDomain(domain);
@@ -1305,6 +1359,7 @@ export default function WhoisPage() {
                 setIsMobileWhoisOpen(true);
               }}
               sessionToken={session?.token}
+              userName={user?.name || user?.email.split('@')[0]}
             />
           )}
 

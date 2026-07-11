@@ -1,6 +1,7 @@
 import { useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import WhoisPage from './pages/WhoisPage';
+import AcceptInvitationPage from './pages/AcceptInvitationPage';
 
 export default function App() {
   const { session, loading } = useAuth();
@@ -14,6 +15,11 @@ export default function App() {
         </svg>
       </div>
     );
+  }
+
+  const isAcceptInvite = window.location.pathname === '/accept-invitation';
+  if (isAcceptInvite) {
+    return <AcceptInvitationPage />;
   }
 
   return session ? <WhoisPage /> : <LoginPage />;
