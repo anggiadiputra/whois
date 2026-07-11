@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Globe, Search, ArrowLeft, ShieldAlert, CheckCircle2, Clock, Terminal } from 'lucide-react';
+import { Globe, Search, ShieldAlert, CheckCircle2, Clock, Terminal } from 'lucide-react';
 
 interface WhoisResult {
   domain: string;
@@ -92,23 +92,19 @@ export default function PublicWhoisPage() {
             </div>
           )}
           <span className="font-bold text-gray-900 text-lg tracking-tight">{brandName}</span>
-          <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-gray-250">
-            Publik
-          </span>
         </div>
         <div>
           <a
             href="/"
-            className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-black transition-colors"
+            className="px-4.5 py-2 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Kembali ke Login
+            Login
           </a>
         </div>
       </header>
 
       {/* Main Search Area */}
-      <main className="w-full max-w-4xl px-4 py-8 md:py-12 space-y-6 flex-1">
+      <main className="w-full max-w-2xl px-4 py-8 md:py-12 space-y-6 flex-1">
         <div className="text-center max-w-lg mx-auto space-y-2">
           <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">WHOIS Domain Lookup</h1>
           <p className="text-sm text-gray-500 font-normal">
