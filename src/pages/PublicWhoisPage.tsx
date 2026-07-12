@@ -1,24 +1,40 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Globe, Search, ShieldAlert, CheckCircle2, Clock, Terminal } from 'lucide-react';
+import { WhoisResult } from '../lib/neon';
+import { Globe, Search, ShieldAlert, CheckCircle2, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 
-interface WhoisResult {
-  domain: string;
-  registrar?: string;
-  registrarId?: string;
-  registrantName?: string;
-  registrantEmail?: string;
-  registrantPhone?: string;
-  registrantAddress?: string;
-  expiryDate?: string;
-  createdDate?: string;
-  updatedDate?: string;
-  nameServers?: string[];
-  status?: string[];
-  raw?: string;
-  handle?: string;
-  whoisServer?: string;
+function StatusBadge({ status }: { status: string }) {
+  const clean = status.toLowerCase();
+  let bg = 'bg-gray-100 text-gray-700 border-gray-200';
+  if (clean.includes('active') || clean.includes('ok')) {
+    bg = 'bg-emerald-50 text-emerald-700 border-emerald-150';
+  } else if (clean.includes('clienttransferprohibited') || clean.includes('prohibited')) {
+    bg = 'bg-blue-50 text-blue-700 border-blue-150';
+  } else if (clean.includes('pending') || clean.includes('hold')) {
+    bg = 'bg-amber-50 text-amber-700 border-amber-150';
+  }
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${bg} font-mono uppercase`}>
+      {status}
+    </span>
+  );
 }
+
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return '—';
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return dateStr;
+  }
+};
 
 export default function PublicWhoisPage() {
   const { brandName } = useAuth();
@@ -39,7 +55,7 @@ export default function PublicWhoisPage() {
       const res = await fetch(`/api/public-whois-lookup?domain=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal mengambil data WHOIS.');
-      setResult(data);
+      setResult(data as WhoisResult);
     } catch (err: any) {
       setLookupError(err.message || 'Gagal memeriksa domain.');
     } finally {
@@ -48,7 +64,7 @@ export default function PublicWhoisPage() {
   };
 
   // Expiry calculation helper
-  const getExpiryLabel = (expiryDateStr?: string) => {
+  const getExpiryLabel = (expiryDateStr?: string | null) => {
     if (!expiryDateStr) return null;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -137,15 +153,15 @@ export default function PublicWhoisPage() {
 
         {/* WHOIS Results Display */}
         {result && (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden animate-fade-in">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden animate-fade-in">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50 gap-4">
-              <div className="flex items-center gap-2.5">
-                <Globe className="w-5 h-5 text-gray-700" />
-                <h2 className="text-lg font-black text-gray-900 font-mono tracking-tight">{result.domain}</h2>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-gray-600" />
+                <h2 className="text-base font-bold text-gray-900 font-mono tracking-tight">{result.domain}</h2>
               </div>
               {expiryBadge && (
-                <div className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full border ${expiryBadge.class}`}>
+                <div className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-semibold border ${expiryBadge.class}`}>
                   {expiryBadge.icon}
                   <span>{expiryBadge.text}</span>
                 </div>
@@ -154,91 +170,110 @@ export default function PublicWhoisPage() {
 
             {/* Details Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left border-collapse">
+              <table className="w-full text-sm text-left border-collapse">
                 <tbody className="divide-y divide-gray-100">
                   {result.handle && (
                     <tr className="hover:bg-gray-50/50">
-                      <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider w-1/3">Domain Handle / ID</td>
-                      <td className="px-6 py-3.5 text-gray-800 font-mono select-all">{result.handle}</td>
+                      <td className="px-5 py-3 font-semibold text-gray-500 w-1/3">Domain Handle / ID</td>
+                      <td className="px-5 py-3 text-gray-800 font-mono select-all">{result.handle}</td>
                     </tr>
                   )}
                   <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">Registrar</td>
-                    <td className="px-6 py-3.5 text-gray-800 font-semibold">
+                    <td className="px-5 py-3 font-semibold text-gray-500">Registrar</td>
+                    <td className="px-5 py-3 text-gray-800 font-medium">
                       {result.registrar || '—'}
                       {result.registrarId && <span className="text-gray-400 font-normal text-xs ml-1.5">(IANA ID: {result.registrarId})</span>}
                     </td>
                   </tr>
                   {result.registrantName && (
                     <tr className="hover:bg-gray-50/50">
-                      <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">Registrant Name</td>
-                      <td className="px-6 py-3.5 text-gray-800 font-semibold">{result.registrantName}</td>
+                      <td className="px-5 py-3 font-semibold text-gray-500">Registrant Name</td>
+                      <td className="px-5 py-3 text-gray-800 font-medium">
+                        {result.registrantName}
+                      </td>
                     </tr>
                   )}
                   {(result.registrantEmail || result.registrantPhone) && (
                     <tr className="hover:bg-gray-50/50">
-                      <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">Registrant Contact</td>
-                      <td className="px-6 py-3.5 text-gray-800 space-y-1">
-                        {result.registrantEmail && <p className="font-mono">{result.registrantEmail}</p>}
-                        {result.registrantPhone && <p>{result.registrantPhone}</p>}
-                        {result.registrantAddress && <p className="text-gray-500 font-normal">{result.registrantAddress}</p>}
+                      <td className="px-5 py-3 font-semibold text-gray-500">Registrant Contact</td>
+                      <td className="px-5 py-3 text-gray-800 font-mono">
+                        {result.registrantEmail && <span className="mr-3 text-gray-800">{result.registrantEmail}</span>}
+                        {result.registrantPhone && <span className="text-gray-500">{result.registrantPhone}</span>}
+                      </td>
+                    </tr>
+                  )}
+                  {(result.registrarEmail || result.registrarPhone) && (
+                    <tr className="hover:bg-gray-50/50">
+                      <td className="px-5 py-3 font-semibold text-gray-500">Registrar Contact</td>
+                      <td className="px-5 py-3 text-gray-800 font-mono">
+                        {result.registrarEmail && <span className="mr-3 text-gray-800">{result.registrarEmail}</span>}
+                        {result.registrarPhone && <span className="text-gray-500">{result.registrarPhone}</span>}
+                      </td>
+                    </tr>
+                  )}
+                  {(result.abuseEmail || result.abusePhone) && (
+                    <tr className="hover:bg-gray-50/50">
+                      <td className="px-5 py-3 font-semibold text-gray-500">Abuse Contact</td>
+                      <td className="px-5 py-3 text-gray-800 font-mono">
+                        {result.abuseEmail && <span className="mr-3 text-gray-800">{result.abuseEmail}</span>}
+                        {result.abusePhone && <span className="text-gray-500">{result.abusePhone}</span>}
                       </td>
                     </tr>
                   )}
                   <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">Tanggal Dibuat (Created)</td>
-                    <td className="px-6 py-3.5 text-gray-800 font-semibold">
-                      {result.createdDate 
-                        ? new Date(result.createdDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                        : '—'}
+                    <td className="px-5 py-3 font-semibold text-gray-500">Status</td>
+                    <td className="px-5 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {result.status && Array.isArray(result.status) && result.status.length > 0 ? (
+                          result.status.map(s => <StatusBadge key={s} status={s} />)
+                        ) : (
+                          '—'
+                        )}
+                      </div>
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">Tanggal Kedaluwarsa (Expiry)</td>
-                    <td className="px-6 py-3.5 text-gray-800 font-semibold text-gray-900">
-                      {result.expiryDate 
-                        ? new Date(result.expiryDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                        : '—'}
+                    <td className="px-5 py-3 font-semibold text-gray-500">Created Date</td>
+                    <td className="px-5 py-3 text-gray-800 font-mono">{formatDate(result.createdDate)}</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50/50">
+                    <td className="px-5 py-3 font-semibold text-gray-500">Updated Date</td>
+                    <td className="px-5 py-3 text-gray-800 font-mono">{formatDate(result.updatedDate)}</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50/50">
+                    <td className="px-5 py-3 font-semibold text-gray-500">Expiry Date</td>
+                    <td className="px-5 py-3 text-orange-700 font-mono font-semibold">{formatDate(result.expiryDate)}</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50/50">
+                    <td className="px-5 py-3 font-semibold text-gray-500">DNSSEC Status</td>
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${
+                        (result.dnssec || 'Unsigned / Inactive').includes('Active')
+                          ? 'bg-green-50 text-green-700 border-green-100'
+                          : 'bg-gray-50 text-gray-500 border-gray-100'
+                      }`}>
+                        {result.dnssec || 'Unsigned / Inactive'}
+                      </span>
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">Terakhir Diperbarui (Updated)</td>
-                    <td className="px-6 py-3.5 text-gray-800 font-semibold">
-                      {result.updatedDate 
-                        ? new Date(result.updatedDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                        : '—'}
+                    <td className="px-5 py-3 font-semibold text-gray-500">Nameservers</td>
+                    <td className="px-5 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {result.nameservers && result.nameservers.length > 0 ? (
+                          result.nameservers.map(ns => (
+                            <span key={ns} className="px-2.5 py-0.5 bg-gray-100 rounded font-mono text-gray-700 text-xs">{ns}</span>
+                          ))
+                        ) : (
+                          '—'
+                        )}
+                      </div>
                     </td>
                   </tr>
-                  {result.nameServers && result.nameServers.length > 0 && (
+                  {result.databaseLastUpdate && (
                     <tr className="hover:bg-gray-50/50">
-                      <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">Name Servers (NS)</td>
-                      <td className="px-6 py-3.5 text-gray-800">
-                        <ul className="list-disc list-inside space-y-1 font-mono text-[11px] text-gray-700">
-                          {result.nameServers.map((ns, idx) => (
-                            <li key={idx}>{ns.toLowerCase()}</li>
-                          ))}
-                        </ul>
-                      </td>
-                    </tr>
-                  )}
-                  {result.status && result.status.length > 0 && (
-                    <tr className="hover:bg-gray-50/50">
-                      <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">Domain Status</td>
-                      <td className="px-6 py-3.5">
-                        <div className="flex flex-wrap gap-1.5">
-                          {result.status.map((st, idx) => (
-                            <span key={idx} className="px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-[10px] font-medium text-gray-650 font-mono">
-                              {st.split(' ')[0]}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {result.whoisServer && (
-                    <tr className="hover:bg-gray-50/50">
-                      <td className="px-6 py-3.5 font-bold text-gray-400 uppercase tracking-wider">WHOIS Server</td>
-                      <td className="px-6 py-3.5 text-gray-800 font-mono select-all">{result.whoisServer}</td>
+                      <td className="px-5 py-3 font-semibold text-gray-500">Database Last Sync</td>
+                      <td className="px-5 py-3 text-gray-400 font-mono">{formatDate(result.databaseLastUpdate)}</td>
                     </tr>
                   )}
                 </tbody>
@@ -246,25 +281,19 @@ export default function PublicWhoisPage() {
             </div>
 
             {/* Expandable Raw WHOIS */}
-            {result.raw && (
-              <div className="border-t border-gray-100 bg-gray-50/30">
-                <button
-                  onClick={() => setExpandedRaw(!expandedRaw)}
-                  className="w-full flex items-center justify-between px-6 py-4 text-xs font-bold text-gray-700 hover:text-black transition-colors focus:outline-none"
-                >
-                  <span className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-gray-400" />
-                    Data Mentah WHOIS (Raw Text)
-                  </span>
-                  <span>{expandedRaw ? 'Sembunyikan' : 'Tampilkan'}</span>
-                </button>
-                {expandedRaw && (
-                  <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-200">
-                    <pre className="p-4 bg-gray-900 text-gray-100 rounded-xl text-[10px] font-mono leading-relaxed overflow-x-auto max-h-96 select-all shadow-inner">
-                      {result.raw}
-                    </pre>
-                  </div>
-                )}
+            <button
+              onClick={() => setExpandedRaw(v => !v)}
+              className="w-full flex items-center justify-between px-5 py-2.5 border-t border-gray-100 text-[11px] text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              <span className="font-semibold uppercase tracking-wider text-[10px]">Raw RDAP Data</span>
+              {expandedRaw ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {expandedRaw && (
+              <div className="border-t border-gray-100 p-4 bg-gray-50/30">
+                <pre className="text-[10px] text-gray-600 overflow-auto max-h-60 font-mono whitespace-pre-wrap break-all bg-white p-3 rounded-lg border border-gray-200">
+                  {JSON.stringify(result.rawData, null, 2)}
+                </pre>
               </div>
             )}
           </div>
