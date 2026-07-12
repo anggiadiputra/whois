@@ -16,10 +16,10 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#f0f2f5] flex flex-col">
       {/* Top Navbar */}
       <header className="w-full bg-white border-b border-gray-200 h-16 sticky top-0 z-10 shrink-0 flex items-center">
-        <div className="max-w-7xl mx-auto px-6 w-full flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full flex items-center justify-between">
           {/* Brand Info & Menu */}
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3 sm:gap-8">
+            <div className="flex items-center gap-1.5 sm:gap-2.5">
               {brandLogo ? (
                 <img src={brandLogo} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
               ) : (
@@ -27,10 +27,10 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
                   <Globe className="w-4.5 h-4.5 text-white" />
                 </div>
               )}
-              <span className="font-bold text-gray-900 text-lg tracking-tight">{brandName}</span>
+              <span className="font-bold text-gray-900 text-sm sm:text-lg tracking-tight truncate max-w-[100px] sm:max-w-none">{brandName}</span>
             </div>
             {/* Nav Menu */}
-            <nav className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm font-semibold text-gray-400 select-none">
+            <nav className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm font-semibold text-gray-400 select-none">
               <a 
                 href="/" 
                 className={`transition-colors py-1 ${currentPath === '/' ? 'text-gray-900 font-bold border-b-2 border-black pb-0.5' : 'text-gray-500 hover:text-black'}`}
@@ -47,17 +47,17 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <a
               href="/login"
-              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-black rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-black rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-sm active:scale-[0.98] shrink-0"
             >
               <LogIn className="w-4 h-4 text-gray-400" />
               Login
             </a>
             <a
               href="/register"
-              className="px-4 sm:px-4.5 py-2 bg-black hover:bg-gray-900 hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
+              className="hidden sm:flex px-4 sm:px-4.5 py-2 bg-black hover:bg-gray-900 hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] items-center justify-center shrink-0"
             >
               Get Started
             </a>
